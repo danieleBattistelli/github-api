@@ -1,0 +1,29 @@
+.card {
+    border: 1px solid #ccc;
+    padding: 16px;
+    border-radius: 8px;
+    width: 200px;
+}
+
+.card img {
+    width: 100px;
+    border-radius: 50%;
+}
+
+.card.user {
+    text-align: center;
+    background-color: #f9f9f9;
+}
+
+.card.organization {
+    text-align: center;
+    background-color: #e6f7ff;
+}
+
+.repo-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    /* Adatta alla larghezza del contenitore */
+}
