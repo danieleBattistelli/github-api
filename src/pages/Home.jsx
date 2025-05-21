@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import RepoCard from "../components/RepoCard";
 import UserCard from "../components/UserCard";
 import OrganizationCard from "../components/OrganizationCard";
@@ -14,6 +14,8 @@ function Home() {
     const [loading, setLoading] = useState(false);
     // Stato per il messaggio di errore
     const [errorMessage, setErrorMessage] = useState("");
+    // Stato per la pagina corrente
+    const [page, setPage] = useState(1);
 
     // Funzione per gestire la ricerca quando l'utente clicca sul pulsante "Cerca".
     const handleSearch = () => {
@@ -27,14 +29,15 @@ function Home() {
 
         const endpoint =
             searchType === "repositories"
-                ? `https://api.github.com/search/repositories?q=${searchTerm}`
-                : `https://api.github.com/search/users?q=${searchTerm}`;
+                ? `https://api.github.com/search/repositories?q=${searchTerm}&page=${page}`
+                : `https://api.github.com/search/users?q=${searchTerm}&page=${page}`;
 
         fetch(endpoint)
             .then((response) => response.json())
             .then((data) => {
-                setResults(data.items || []);
-                if (!data.items || data.items.length === 0) {
+                const items = data.items || [];
+                setResults(items.slice(0, 8)); // Mostra solo i primi 8 risultati
+                if (items.length === 0) {
                     setErrorMessage("Nessun risultato trovato.");
                 }
             })
@@ -44,6 +47,17 @@ function Home() {
             })
             .finally(() => setLoading(false)); // Nasconde il loader
     };
+
+    // Effetto per gestire il debounce della ricerca
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            if (searchTerm.trim().length >= 3) {
+                handleSearch();
+            }
+        }, 700);
+
+        return () => clearTimeout(handler); // Pulisce il timeout precedente
+    }, [searchTerm, searchType, page]); // Aggiungi `page` alle dipendenze
 
     return (
         <div>
@@ -81,8 +95,24 @@ function Home() {
                     )
                 )}
             </div>
+            {/* Pulsanti di paginazione */}
+            <div>
+                <button
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={page === 1}
+                >
+                    Indietro
+                </button>
+                <span>Pagina {page}</span>
+                <button
+                    onClick={() => setPage((prev) => prev + 1)}
+                    disabled={results.length < 8} // Disabilita se ci sono meno di 8 risultati
+                >
+                    Avanti
+                </button>
+            </div>
         </div>
     );
 }
 
-export default Home; 
+export default Home;
