@@ -22,6 +22,8 @@ function Home() {
     const [authToken, setAuthToken] = useState("");
     // Stato per memorizzare il nome dell'utente autenticato
     const [authenticatedUser, setAuthenticatedUser] = useState("");
+    // Stato per il filtro del linguaggio
+    const [language, setLanguage] = useState(""); // Stato per il filtro del linguaggio
 
     const observerRef = useRef(null); // Ref per l'osservatore dell'intersezione
 
@@ -35,7 +37,7 @@ function Home() {
         setErrorMessage(""); // Resetta il messaggio di errore
         setLoading(true); // Mostra il loader
 
-        const cacheKey = `${searchType}-${searchTerm}-${page}`;
+        const cacheKey = `${searchType}-${searchTerm}-${page}-${language}`;
         if (cache[cacheKey]) {
             // Usa i risultati dalla cache
             setResults(cache[cacheKey]);
@@ -43,9 +45,10 @@ function Home() {
             return;
         }
 
+        const languageFilter = language ? `+language:${language}` : ""; // Aggiungi il filtro linguaggio
         const endpoint =
             searchType === "repositories"
-                ? `https://api.github.com/search/repositories?q=${searchTerm}&page=${page}`
+                ? `https://api.github.com/search/repositories?q=${searchTerm}${languageFilter}&page=${page}`
                 : `https://api.github.com/search/users?q=${searchTerm}&page=${page}`;
 
         const headers = authToken
@@ -109,7 +112,7 @@ function Home() {
         }, 700);
 
         return () => clearTimeout(handler); // Pulisce il timeout precedente
-    }, [searchTerm, searchType, page]); // Aggiungi `page` alle dipendenze
+    }, [searchTerm, searchType, page, language]); // Aggiungi `page` e `language` alle dipendenze
 
     // Effetto per caricare le ricerche recenti dal localStorage all'avvio
     useEffect(() => {
@@ -195,10 +198,11 @@ function Home() {
                             {key}{" "}
                             <button
                                 onClick={() => {
-                                    const [type, term, page] = key.split("-");
+                                    const [type, term, page, lang] = key.split("-");
                                     setSearchType(type);
                                     setSearchTerm(term);
                                     setPage(Number(page));
+                                    setLanguage(lang || ""); // Imposta il linguaggio se presente
                                     setResults(cache[key]);
                                 }}
                             >
@@ -234,6 +238,19 @@ function Home() {
                 >
                     <option value="repositories">Repository</option>
                     <option value="users">Utenti/Organizzazioni</option>
+                </select>
+                {/* Selezione del linguaggio */}
+                <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    disabled={searchType === "users"} // Disabilita la select se il tipo di ricerca è "users"
+                >
+                    <option value="">Tutti i linguaggi</option>
+                    <option value="React">React</option>
+                    <option value="Python">Python</option>
+                    <option value="Java">Java</option>
+                    <option value="C#">C#</option>
+                    <option value="PHP">PHP</option>
                 </select>
                 {/* Pulsante per avviare la ricerca */}
                 <button onClick={handleSearch}>Cerca</button>
