@@ -18,6 +18,10 @@ function Home() {
     const [page, setPage] = useState(1);
     // Stato per memorizzare la cache
     const [cache, setCache] = useState({});
+    // Stato per il token di autenticazione
+    const [authToken, setAuthToken] = useState("");
+    // Stato per memorizzare il nome dell'utente autenticato
+    const [authenticatedUser, setAuthenticatedUser] = useState("");
 
     const observerRef = useRef(null); // Ref per l'osservatore dell'intersezione
 
@@ -44,8 +48,17 @@ function Home() {
                 ? `https://api.github.com/search/repositories?q=${searchTerm}&page=${page}`
                 : `https://api.github.com/search/users?q=${searchTerm}&page=${page}`;
 
-        fetch(endpoint)
-            .then((response) => response.json())
+        const headers = authToken
+            ? { Authorization: `Bearer ${authToken}` } // Usa il token di autenticazione
+            : {}; // Aggiungi il token di autenticazione se presente
+
+        fetch(endpoint, { headers })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
+                return response.json();
+            })
             .then((data) => {
                 const items = data.items || [];
                 setResults(items); // Mostra tutti i risultati
@@ -123,9 +136,56 @@ function Home() {
         }
     }, [cache]);
 
+    // Funzione per verificare se il token è valido
+    const validateToken = () => {
+        if (!authToken) {
+            setErrorMessage("Inserisci un token per effettuare la verifica.");
+            setAuthenticatedUser(""); // Resetta il nome utente
+            return;
+        }
+
+        const headers = { Authorization: `Bearer ${authToken}` };
+
+        fetch("https://api.github.com/user", { headers })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Token non valido: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then((data) => {
+                console.log("Token valido. Utente autenticato:", data);
+                setAuthenticatedUser(data.login); // Salva il nome utente
+                setErrorMessage(""); // Resetta eventuali messaggi di errore
+            })
+            .catch((error) => {
+                console.error("Errore durante la verifica del token:", error);
+                setErrorMessage("Token non valido. Inserisci un token corretto.");
+                setAuthenticatedUser(""); // Resetta il nome utente
+            });
+    };
+
+    // Effetto per verificare il token quando cambia
+    useEffect(() => {
+        if (authToken) {
+            validateToken();
+        }
+    }, [authToken]);
+
     return (
         <div>
             <h1>GitHub API</h1> {/* Titolo della pagina */}
+            {/* Sezione per inserire il token di autenticazione */}
+            <div>
+                <input
+                    type="password"
+                    placeholder="Inserisci il token GitHub"
+                    value={authToken}
+                    onChange={(e) => setAuthToken(e.target.value)}
+                />
+                {authenticatedUser && <p>Utente autenticato: {authenticatedUser}</p>} {/* Nome utente */}
+                {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>} {/* Messaggio di errore */}
+            </div>
             {/* Sezione per mostrare le ricerche già effettuate */}
             <div>
                 <h2>Ricerche Recenti</h2>
