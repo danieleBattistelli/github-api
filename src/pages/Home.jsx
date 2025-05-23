@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import RepoCard from "../components/RepoCard";
 import UserCard from "../components/UserCard";
 import OrganizationCard from "../components/OrganizationCard";
@@ -18,6 +18,8 @@ function Home() {
     const [page, setPage] = useState(1);
     // Stato per memorizzare la cache
     const [cache, setCache] = useState({});
+
+    const observerRef = useRef(null); // Ref per l'osservatore dell'intersezione
 
     // Funzione per gestire la ricerca quando l'utente clicca sul pulsante "Cerca".
     const handleSearch = () => {
@@ -46,8 +48,8 @@ function Home() {
             .then((response) => response.json())
             .then((data) => {
                 const items = data.items || [];
-                setResults(items.slice(0, 8)); // Mostra solo i primi 8 risultati
-                setCache((prevCache) => ({ ...prevCache, [cacheKey]: items.slice(0, 8) })); // Salva nella cache
+                setResults(items); // Mostra tutti i risultati
+                setCache((prevCache) => ({ ...prevCache, [cacheKey]: items })); // Salva nella cache tutti i risultati
                 if (items.length === 0) {
                     setErrorMessage("Nessun risultato trovato.");
                 }
@@ -58,6 +60,32 @@ function Home() {
             })
             .finally(() => setLoading(false)); // Nasconde il loader
     };
+
+    // Funzione per caricare più risultati
+    const loadMoreResults = () => {
+        setPage((prevPage) => prevPage + 1);
+    };
+
+    // Effetto per osservare il fondo della pagina
+    useEffect(() => {
+        if (observerRef.current) observerRef.current.disconnect();
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && !loading && results.length > 0) {
+                    loadMoreResults();
+                }
+            },
+            { threshold: 1.0 }
+        );
+
+        const target = document.querySelector("#load-more-trigger");
+        if (target) observer.observe(target);
+
+        observerRef.current = observer;
+
+        return () => observer.disconnect();
+    }, [loading, results]);
 
     // Effetto per gestire il debounce della ricerca
     useEffect(() => {
@@ -164,22 +192,8 @@ function Home() {
                     )
                 )}
             </div>
-            {/* Pulsanti di paginazione */}
-            <div>
-                <button
-                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={page === 1}
-                >
-                    Indietro
-                </button>
-                <span>Pagina {page}</span>
-                <button
-                    onClick={() => setPage((prev) => prev + 1)}
-                    disabled={results.length < 8} // Disabilita se ci sono meno di 8 risultati
-                >
-                    Avanti
-                </button>
-            </div>
+            {/* Trigger per il caricamento infinito */}
+            <div id="load-more-trigger" style={{ height: "1px" }}></div>
         </div>
     );
 }
