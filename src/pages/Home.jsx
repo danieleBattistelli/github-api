@@ -31,7 +31,7 @@ function Home() {
     const observerRef = useRef(null); // Ref per l'osservatore dell'intersezione
 
     // Funzione per gestire la ricerca quando l'utente clicca sul pulsante "Cerca".
-    const handleSearch = () => {
+    const handleSearch = async () => {
         if (searchTerm.trim().length < 3) {
             setErrorMessage("Il termine di ricerca deve contenere almeno 3 caratteri.");
             return;
@@ -58,26 +58,41 @@ function Home() {
             ? { Authorization: `Bearer ${authToken}` } // Usa il token di autenticazione
             : {}; // Aggiungi il token di autenticazione se presente
 
-        fetch(endpoint, { headers })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`Errore HTTP: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then((data) => {
-                const items = data.items || [];
-                setResults(items); // Mostra tutti i risultati
-                setCache((prevCache) => ({ ...prevCache, [cacheKey]: items })); // Salva nella cache tutti i risultati
-                if (items.length === 0) {
-                    setErrorMessage("Nessun risultato trovato.");
-                }
-            })
-            .catch((error) => {
-                console.error("Errore durante la ricerca:", error);
-                setErrorMessage("Si è verificato un errore durante la ricerca.");
-            })
-            .finally(() => setLoading(false)); // Nasconde il loader
+        try {
+            const response = await fetch(endpoint, { headers });
+            if (!response.ok) {
+                throw new Error(`Errore HTTP: ${response.status}`);
+            }
+            const data = await response.json();
+            const items = data.items || [];
+
+            if (searchType === "users") {
+                // Recupera i follower per le organizzazioni
+                const updatedItems = await Promise.all(
+                    items.map(async (item) => {
+                        if (item.type === "Organization") {
+                            const followers = await fetchOrganizationFollowers(item);
+                            return { ...item, followers };
+                        }
+                        return item;
+                    })
+                );
+                setResults(updatedItems);
+                setCache((prevCache) => ({ ...prevCache, [cacheKey]: updatedItems }));
+            } else {
+                setResults(items);
+                setCache((prevCache) => ({ ...prevCache, [cacheKey]: items }));
+            }
+
+            if (items.length === 0) {
+                setErrorMessage("Nessun risultato trovato.");
+            }
+        } catch (error) {
+            console.error("Errore durante la ricerca:", error);
+            setErrorMessage("Si è verificato un errore durante la ricerca.");
+        } finally {
+            setLoading(false); // Nasconde il loader
+        }
     };
 
     // Funzione per caricare più risultati
@@ -178,6 +193,19 @@ function Home() {
         }
     }, [authToken]);
 
+    const sortedResults = [...results].sort((a, b) => {
+        if (searchType === "users") {
+            if (sortOrder === "username") {
+                return sortDirection === "asc"
+                    ? a.login.localeCompare(b.login)
+                    : b.login.localeCompare(a.login);
+            }
+        }
+        return 0; // Nessun ordinamento per altri tipi di ricerca
+    });
+
+    // Funzione per recuperare i follower delle organizzazioni
+
     return (
         <div>
             <h1>GitHub API</h1> {/* Titolo della pagina */}
@@ -263,18 +291,26 @@ function Home() {
                 <select
                     value={sortOrder}
                     onChange={(e) => setSortOrder(e.target.value)}
-                    disabled={searchType !== "repositories"} // Disabilita se non si cercano repository
                 >
                     <option value="">Nessun ordinamento</option>
-                    <option value="stars">Stelle</option>
-                    <option value="forks">Fork</option>
-                    <option value="updated">Ultimo aggiornamento</option>
+                    {searchType === "repositories" && (
+                        <>
+                            <option value="stars">Stelle</option>
+                            <option value="forks">Fork</option>
+                            <option value="updated">Ultimo aggiornamento</option>
+                        </>
+                    )}
+                    {searchType === "users" && (
+                        <>
+                            <option value="username">Nome utente</option>
+                            {/* Rimosso l'ordinamento per follower */}
+                        </>
+                    )}
                 </select>
                 {/* Selezione della direzione dell'ordinamento */}
                 <select
                     value={sortDirection}
                     onChange={(e) => setSortDirection(e.target.value)}
-                    disabled={searchType !== "repositories"} // Disabilita se non si cercano repository
                 >
                     <option value="desc">Decrescente</option>
                     <option value="asc">Crescente</option>
@@ -284,11 +320,11 @@ function Home() {
             {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>} {/* Messaggio di errore */}
             {/* Elenco dei risultati della ricerca */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-                {results.map((item) =>
+                {sortedResults.map((item) =>
                     searchType === "repositories" ? (
                         <RepoCard key={item.id} item={item} />
                     ) : item.type === "User" ? (
-                        <UserCard key={item.id} item={item} />
+                        <UserCard key={item.id} item={{ ...item, followers: item.followers || 0 }} />
                     ) : (
                         <OrganizationCard key={item.id} item={item} />
                     )
