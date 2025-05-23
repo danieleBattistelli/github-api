@@ -24,6 +24,9 @@ function Home() {
     const [authenticatedUser, setAuthenticatedUser] = useState("");
     // Stato per il filtro del linguaggio
     const [language, setLanguage] = useState(""); // Stato per il filtro del linguaggio
+    // Stato per l'ordinamento
+    const [sortOrder, setSortOrder] = useState(""); // Stato per l'ordinamento
+    const [sortDirection, setSortDirection] = useState("desc"); // Stato per la direzione dell'ordinamento
 
     const observerRef = useRef(null); // Ref per l'osservatore dell'intersezione
 
@@ -37,7 +40,7 @@ function Home() {
         setErrorMessage(""); // Resetta il messaggio di errore
         setLoading(true); // Mostra il loader
 
-        const cacheKey = `${searchType}-${searchTerm}-${page}-${language}`;
+        const cacheKey = `${searchType}-${searchTerm}-${page}-${language}-${sortOrder}-${sortDirection}`;
         if (cache[cacheKey]) {
             // Usa i risultati dalla cache
             setResults(cache[cacheKey]);
@@ -48,7 +51,7 @@ function Home() {
         const languageFilter = language ? `+language:${language}` : ""; // Aggiungi il filtro linguaggio
         const endpoint =
             searchType === "repositories"
-                ? `https://api.github.com/search/repositories?q=${searchTerm}${languageFilter}&page=${page}`
+                ? `https://api.github.com/search/repositories?q=${searchTerm}${languageFilter}&page=${page}&sort=${sortOrder}&order=${sortDirection}`
                 : `https://api.github.com/search/users?q=${searchTerm}&page=${page}`;
 
         const headers = authToken
@@ -109,7 +112,7 @@ function Home() {
             if (searchTerm.trim().length >= 3) {
                 handleSearch();
             }
-        }, 700);
+        }, 1500);
 
         return () => clearTimeout(handler); // Pulisce il timeout precedente
     }, [searchTerm, searchType, page, language]); // Aggiungi `page` e `language` alle dipendenze
@@ -254,6 +257,28 @@ function Home() {
                 </select>
                 {/* Pulsante per avviare la ricerca */}
                 <button onClick={handleSearch}>Cerca</button>
+            </div>
+            <div>
+                {/* Selezione dell'ordinamento */}
+                <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    disabled={searchType !== "repositories"} // Disabilita se non si cercano repository
+                >
+                    <option value="">Nessun ordinamento</option>
+                    <option value="stars">Stelle</option>
+                    <option value="forks">Fork</option>
+                    <option value="updated">Ultimo aggiornamento</option>
+                </select>
+                {/* Selezione della direzione dell'ordinamento */}
+                <select
+                    value={sortDirection}
+                    onChange={(e) => setSortDirection(e.target.value)}
+                    disabled={searchType !== "repositories"} // Disabilita se non si cercano repository
+                >
+                    <option value="desc">Decrescente</option>
+                    <option value="asc">Crescente</option>
+                </select>
             </div>
             {loading && <p>Caricamento in corso...</p>} {/* Loader */}
             {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>} {/* Messaggio di errore */}
