@@ -23,7 +23,7 @@ Questa applicazione React ti permette di esplorare il mondo di GitHub in modo se
 
 ![Demo GIF](demo.gif) <!-- Sostituisci con una gif/screenshot se disponibile -->
 
----
+![alt text](image.png)
 
 ## 🛠️ Come funziona
 
@@ -51,7 +51,3 @@ npm start
 
 Per evitare limiti stringenti sulle richieste, puoi inserire un token personale (scope consigliati: `public_repo`, `read:user`).  
 Il token **non viene salvato** e serve solo per autenticare le chiamate API.
-
----
-
-## 📚 Milestones & Features
