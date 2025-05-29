@@ -65,9 +65,24 @@ function Home() {
             const items = data.items || [];
 
             if (searchType === "users") {
-                // Nessun recupero follower per le organizzazioni
-                setResults(items);
-                setCache((prevCache) => ({ ...prevCache, [cacheKey]: items }));
+                // Recupera i follower per ogni utente/organizzazione
+                const itemsWithFollowers = await Promise.all(
+                    items.map(async (item) => {
+                        try {
+                            const url = item.type === "Organization"
+                                ? `https://api.github.com/orgs/${item.login}`
+                                : `https://api.github.com/users/${item.login}`;
+                            const res = await fetch(url, { headers });
+                            if (!res.ok) return { ...item, followers: "?" };
+                            const details = await res.json();
+                            return { ...item, followers: details.followers };
+                        } catch {
+                            return { ...item, followers: "?" };
+                        }
+                    })
+                );
+                setResults(itemsWithFollowers);
+                setCache((prevCache) => ({ ...prevCache, [cacheKey]: itemsWithFollowers }));
             } else {
                 setResults(items);
                 setCache((prevCache) => ({ ...prevCache, [cacheKey]: items }));
@@ -189,8 +204,33 @@ function Home() {
                     ? a.login.localeCompare(b.login)
                     : b.login.localeCompare(a.login);
             }
+            if (sortOrder === "followers") {
+                // follower può essere "?" se non disponibile, quindi fallback a 0
+                const af = typeof a.followers === "number" ? a.followers : 0;
+                const bf = typeof b.followers === "number" ? b.followers : 0;
+                return sortDirection === "asc"
+                    ? af - bf
+                    : bf - af;
+            }
         }
-        return 0; // Nessun ordinamento per altri tipi di ricerca
+        if (searchType === "repositories") {
+            if (sortOrder === "stars") {
+                return sortDirection === "asc"
+                    ? a.stargazers_count - b.stargazers_count
+                    : b.stargazers_count - a.stargazers_count;
+            }
+            if (sortOrder === "forks") {
+                return sortDirection === "asc"
+                    ? a.forks_count - b.forks_count
+                    : b.forks_count - a.forks_count;
+            }
+            if (sortOrder === "updated") {
+                return sortDirection === "asc"
+                    ? new Date(a.updated_at) - new Date(b.updated_at)
+                    : new Date(b.updated_at) - new Date(a.updated_at);
+            }
+        }
+        return 0; // Nessun ordinamento per altri casi
     });
 
     // Funzione per recuperare i follower delle organizzazioni
@@ -292,7 +332,7 @@ function Home() {
                     {searchType === "users" && (
                         <>
                             <option value="username">Nome utente</option>
-                            {/* Rimosso l'ordinamento per follower */}
+                            <option value="followers">Follower</option>
                         </>
                     )}
                 </select>

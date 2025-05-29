@@ -41,6 +41,9 @@ function Card({ item }) {
                 <img src={item.avatar_url} alt={item.login} />
                 <h3>{item.login}</h3>
                 <p>Tipo: {isOrg ? "Organizzazione" : "Utente"}</p>
+                <p>
+                    <strong>Follower:</strong> {item.followers !== undefined ? item.followers : "?"}
+                </p>
                 <a href={item.html_url} target="_blank" rel="noopener noreferrer">
                     Vai al profilo
                 </a>
