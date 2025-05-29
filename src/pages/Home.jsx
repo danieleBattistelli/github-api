@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import RepoCard from "../components/RepoCard";
-import UserCard from "../components/UserCard";
-import OrganizationCard from "../components/OrganizationCard";
+import Card from "../components/Card";
 
 function Home() {
     // Stato per memorizzare il termine di ricerca inserito dall'utente.
@@ -67,18 +65,9 @@ function Home() {
             const items = data.items || [];
 
             if (searchType === "users") {
-                // Recupera i follower per le organizzazioni
-                const updatedItems = await Promise.all(
-                    items.map(async (item) => {
-                        if (item.type === "Organization") {
-                            const followers = await fetchOrganizationFollowers(item);
-                            return { ...item, followers };
-                        }
-                        return item;
-                    })
-                );
-                setResults(updatedItems);
-                setCache((prevCache) => ({ ...prevCache, [cacheKey]: updatedItems }));
+                // Nessun recupero follower per le organizzazioni
+                setResults(items);
+                setCache((prevCache) => ({ ...prevCache, [cacheKey]: items }));
             } else {
                 setResults(items);
                 setCache((prevCache) => ({ ...prevCache, [cacheKey]: items }));
@@ -320,15 +309,9 @@ function Home() {
             {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>} {/* Messaggio di errore */}
             {/* Elenco dei risultati della ricerca */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-                {sortedResults.map((item) =>
-                    searchType === "repositories" ? (
-                        <RepoCard key={item.id} item={item} />
-                    ) : item.type === "User" ? (
-                        <UserCard key={item.id} item={{ ...item, followers: item.followers || 0 }} />
-                    ) : (
-                        <OrganizationCard key={item.id} item={item} />
-                    )
-                )}
+                {sortedResults.map((item) => (
+                    <Card key={item.id} item={item} />
+                ))}
             </div>
             {/* Trigger per il caricamento infinito */}
             <div id="load-more-trigger" style={{ height: "1px" }}></div>
